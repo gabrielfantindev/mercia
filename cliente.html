@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Clientes — Mercia</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="wrap">
+    <section class="top">
+      <h1 class="greeting">Nova cliente</h1>
+    </section>
+
+    <section class="controls">
+      <div class="control">
+        <a class="icon" href="index.html" aria-label="Voltar para início" title="Início">
+          <svg viewBox="0 0 24 24" width="28" height="28" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+            <path d="M10 19l-7-7 7-7v14zM12 5h8v14h-8V5z" fill="currentColor"/>
+          </svg>
+        </a>
+        <div class="label">Início</div>
+      </div>
+    </section>
+
+    <section class="card form-card">
+      <h2>Dados da cliente</h2>
+      <form id="cliente-form" novalidate>
+        <label class="field">
+          <span class="field-label">Nome</span>
+          <input type="text" name="nome" id="nome" placeholder="Nome" required>
+        </label>
+
+        <label class="field">
+          <span class="field-label">Endereço</span>
+          <input type="text" name="endereco" id="endereco" placeholder="Ex: Rua A, 123" required>
+        </label>
+
+        <label class="field">
+          <span class="field-label">Telefone</span>
+          <input type="tel" name="telefone" id="telefone" placeholder="(11) 9999-9999" pattern="\(\d{2}\)\s?9?\d{4}-?\d{4}" required>
+        </label>
+
+        <div class="form-actions">
+          <button type="submit" class="btn primary">Salvar</button>
+          <button type="reset" class="btn">Limpar</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card clients-card">
+      <h2>Lista de clientes</h2>
+      <div id="clients-list">Carregando...</div>
+    </section>
+  </main>
+
+  <script>
+    // Send form to backend API (POST /api/clients)
+    // Use the same hostname as the page so requests work on LAN (e.g. 192.168.x.x)
+    const API_BASE = `${location.protocol}//${location.hostname}:8000`;
+    const form = document.getElementById('cliente-form');
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const nome = document.getElementById('nome');
+      const endereco = document.getElementById('endereco');
+      const telefone = document.getElementById('telefone');
+
+      if (!nome.value.trim() || !endereco.value.trim() || !telefone.value.trim()) {
+        alert('Preencha todos os campos.');
+        return;
+      }
+
+      const payload = {
+        name: nome.value.trim(),
+        address: endereco.value.trim(),
+        phone: telefone.value.trim(),
+      };
+
+      const submitBtn = form.querySelector('.btn.primary');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Salvando...';
+
+      try {
+        const res = await fetch(`${API_BASE}/api/clients`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || 'Erro ao salvar.');
+        }
+
+        const data = await res.json();
+        alert(`Cliente salvo com sucesso (id: ${data.id}).`);
+        form.reset();
+        // atualiza lista
+        fetchClients();
+      } catch (err) {
+        console.error(err);
+        alert('Erro ao salvar: ' + err.message);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Salvar';
+      }
+    });
+
+    // Fetch and render clients list
+    async function fetchClients(){
+      const listEl = document.getElementById('clients-list');
+      listEl.textContent = 'Carregando...';
+      try{
+        const res = await fetch(`${API_BASE}/api/clients`);
+        if(!res.ok) throw new Error('Falha ao buscar clientes');
+        const clients = await res.json();
+        if(!clients.length){
+          listEl.innerHTML = '<div class="muted">Nenhum cliente cadastrado.</div>';
+          return;
+        }
+        const rows = clients.map(c => `
+          <div class="client-row">
+            <div class="client-name">${escapeHtml(c.name)}</div>
+            <div class="client-meta">${escapeHtml(c.phone || '')} • ${escapeHtml(c.address || '')}</div>
+            <div class="client-date muted">${escapeHtml(c.created_at || '')}</div>
+          </div>
+        `).join('');
+        listEl.innerHTML = rows;
+      }catch(err){
+        console.error(err);
+        listEl.innerHTML = '<div class="muted">Erro ao carregar clientes.</div>';
+      }
+    }
+
+    function escapeHtml(str){
+      return String(str || '').replace(/[&<>"]/g, function(s){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[s]; });
+    }
+
+    // Initial load
+    fetchClients();
+
+    // After successful submit, refresh list
+    const originalSubmitHandler = (async function(e){ /* placeholder */ });
+    // We trigger fetchClients after form success above (where we reset the form and alerted)
+    // Instead of rewriting, we'll call fetchClients after the POST success — to do that, change above where it handles success
+    
+    // Patch: override submit listener to add refresh (safer approach: add a MutationObserver or simply call fetchClients in the success block)
+    // For simplicity, we'll attach an additional listener to observe form reset and then refresh
+    form.addEventListener('reset', () => setTimeout(fetchClients, 10));
+
+    // Also refresh after successful POST by listening for the submit success alert: modify above success block to call fetchClients
+    // (We already show an alert and reset the form; the reset listener will trigger the refresh too.)
+
+  </script>
+</body>
+</html>
