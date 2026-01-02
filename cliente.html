@@ -56,9 +56,9 @@
   </main>
 
   <script>
-    // Send form to backend API (POST /api/clients)
-    // Use the same hostname as the page so requests work on LAN (e.g. 192.168.x.x)
-    const API_BASE = `${location.protocol}//${location.hostname}:8000`;
+    // Google Apps Script Web App endpoint
+    const API_URL = 'https://script.google.com/macros/s/AKfycbxm9kwTw4W6wTNfBAoHBYLQ_YAAUNq-pnTSPsHqfpOnJEk4uGNsyoMhyL4RrTv9vk1huA/exec';
+
     const form = document.getElementById('cliente-form');
     form.addEventListener('submit', async function (e) {
       e.preventDefault();
@@ -82,7 +82,7 @@
       submitBtn.textContent = 'Salvando...';
 
       try {
-        const res = await fetch(`${API_BASE}/api/clients`, {
+        const res = await fetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -93,11 +93,11 @@
           throw new Error(err.detail || 'Erro ao salvar.');
         }
 
-        const data = await res.json();
-        alert(`Cliente salvo com sucesso (id: ${data.id}).`);
+        await res.json().catch(() => ({}));
+        alert('Cliente salvo com sucesso.');
         form.reset();
         // atualiza lista
-        fetchClients();
+        setTimeout(fetchClients, 200);
       } catch (err) {
         console.error(err);
         alert('Erro ao salvar: ' + err.message);
@@ -112,7 +112,7 @@
       const listEl = document.getElementById('clients-list');
       listEl.textContent = 'Carregando...';
       try{
-        const res = await fetch(`${API_BASE}/api/clients`);
+        const res = await fetch(API_URL);
         if(!res.ok) throw new Error('Falha ao buscar clientes');
         const clients = await res.json();
         if(!clients.length){
